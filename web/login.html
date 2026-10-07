@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Starter - Sign in</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<form class="login" id="f">
+  <h1>Model Starter</h1>
+  <p>Three-statement models from SEC filings, built with Claude.</p>
+  <label for="name">Your name</label>
+  <input id="name" autocomplete="name" required maxlength="60">
+  <label for="pw">Team password</label>
+  <input id="pw" type="password" autocomplete="current-password" required>
+  <button class="primary" type="submit">Sign in</button>
+  <div class="err" id="err"></div>
+</form>
+<script>
+const f = document.getElementById('f');
+try { document.getElementById('name').value = localStorage.getItem('ms_name') || ''; } catch (e) {}
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const r = await fetch('/api/login', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, password: document.getElementById('pw').value})});
+  if (r.ok) { try { localStorage.setItem('ms_name', name); } catch (e) {} location.href = '/'; }
+  else { const d = await r.json().catch(() => ({})); document.getElementById('err').textContent = d.detail || 'Sign-in failed'; }
+});
+</script>
+</body>
+</html>

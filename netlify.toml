@@ -1,0 +1,17 @@
+# Netlify serves the pages in web/ and forwards every /api/* request to the backend on Render.
+# Replace the hostname below with your Render service URL after the first Render deploy.
+[build]
+  publish = "web"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://model-starter-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"

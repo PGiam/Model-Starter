@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Starter - Admin</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <h1>Model Starter admin</h1>
+  <a href="/"><button>Back to models</button></a>
+</header>
+<div class="admin">
+  <section>
+    <h2>Team feedback</h2>
+    <p style="color:var(--muted);margin-top:0">Claude turns each suggestion into a playbook edit, a code change request, or both. Nothing goes live until you approve it. Playbook edits apply immediately; code requests open a GitHub issue that Claude picks up as a pull request for you to merge.</p>
+    <div id="fb">Loading...</div>
+  </section>
+  <section>
+    <h2>Playbook</h2>
+    <p style="color:var(--muted);margin-top:0">These are the instructions Claude follows for every model. Edit directly or revert to an earlier version.</p>
+    <textarea id="pb" rows="22" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px"></textarea>
+    <div class="row"><input id="pbReason" placeholder="Reason for the change" style="max-width:360px"><button class="primary" id="pbSave">Save new version</button></div>
+    <div class="err" id="pbMsg"></div>
+    <h2 style="margin-top:14px">History</h2>
+    <table class="usage" id="hist"></table>
+  </section>
+  <section>
+    <h2>Usage</h2>
+    <p id="total" style="margin-top:0"></p>
+    <table class="usage" id="usage"></table>
+  </section>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+async function api(path, opts = {}) {
+  const r = await fetch(path, {headers: {'Content-Type': 'application/json'}, ...opts});
+  if (r.status === 401) { location.href = '/login.html'; throw new Error('login'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || r.statusText);
+  return d;
+}
+function diffHtml(d) {
+  return d.split('\n').map((l) => `<span class="${l.startsWith('+') && !l.startsWith('+++') ? 'add' : l.startsWith('-') && !l.startsWith('---') ? 'del' : ''}">${esc(l)}</span>`).join('\n');
+}
+async function loadFeedback() {
+  const items = await api('/api/admin/feedback');
+  $('fb').innerHTML = items.map((it) => {
+    const p = it.proposal || {};
+    const res = it.result || {};
+    let body = `<p style="margin:6px 0"><strong>${esc(it.author)}</strong> <small style="color:var(--muted)">${esc((it.at || '').slice(0, 16).replace('T', ' '))}</small></p><p style="margin:6px 0;white-space:pre-wrap">${esc(it.text)}</p>`;
+    if (p.summary) body += `<p style="margin:6px 0"><span class="tag">${esc(p.kind)}</span>${esc(p.summary)}</p><p style="margin:6px 0;color:var(--muted);font-size:14px">${esc(p.reason)}</p>`;
+    if (it.diff) body += `<details open><summary>Playbook change</summary><pre class="diff">${diffHtml(it.diff)}</pre></details>`;
+    if (p.code_request_title) body += `<details><summary>Code request: ${esc(p.code_request_title)}</summary><pre class="diff">${esc(p.code_request_body)}</pre></details>`;
+    if (it.error) body += `<p class="err">${esc(it.error)}</p>`;
+    if (res.issue && res.issue.url) body += `<p style="margin:6px 0">Issue: <a href="${esc(res.issue.url)}" target="_blank" rel="noopener">${esc(res.issue.url)}</a></p>`;
+    else if (res.issue && res.issue.note) body += `<p style="margin:6px 0;color:var(--muted)">${esc(res.issue.note)}</p>`;
+    if (it.note) body += `<p style="margin:6px 0;color:var(--muted)">Note: ${esc(it.note)}</p>`;
+    const actions = [];
+    if (it.status === 'pending') actions.push(`<button class="primary" data-act="approve" data-id="${it.id}">Approve</button>`, `<button data-act="reject" data-id="${it.id}">Reject</button>`);
+    if (['pending', 'error', 'no_action', 'rejected'].includes(it.status)) actions.push(`<button data-act="reanalyze" data-id="${it.id}">Re-analyze</button>`);
+    return `<div class="fb"><span class="tag ${esc(it.status)}">${esc(it.status)}</span>${body}${actions.length ? `<div class="row" style="justify-content:flex-start">${actions.join('')}</div>` : ''}</div>`;
+  }).join('') || '<p style="color:var(--muted)">No feedback yet.</p>';
+  if (items.some((it) => it.status === 'analyzing')) setTimeout(loadFeedback, 4000);
+}
+$('fb').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const {act, id} = b.dataset; b.disabled = true;
+  try {
+    const body = act === 'reject' ? JSON.stringify({note: prompt('Optional note for the record') || ''}) : undefined;
+    await api(`/api/admin/feedback/${id}/${act}`, {method: 'POST', body});
+    if (act === 'approve') loadPlaybook();
+  } catch (err) { alert(err.message); }
+  loadFeedback();
+});
+async function loadPlaybook() {
+  const d = await api('/api/admin/playbook');
+  $('pb').value = d.text;
+  const h = [...d.history].reverse();
+  $('hist').innerHTML = '<tr><th>Version</th><th>When</th><th>By</th><th>Reason</th><th></th></tr>' + h.map((v, i) =>
+    `<tr><td>v${v.version}${i === 0 ? ' (current)' : ''}</td><td>${esc((v.at || '').slice(0, 16).replace('T', ' '))}</td><td>${esc(v.author)}</td><td>${esc(v.reason)}</td><td>${i === 0 ? '' : `<button data-ver="${v.version}">Revert to this</button>`}</td></tr>`).join('');
+}
+$('hist').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-ver]'); if (!b) return;
+  if (!confirm(`Make version ${b.dataset.ver} the current playbook? (This saves a new version, so it can be undone.)`)) return;
+  await api(`/api/admin/playbook/revert/${b.dataset.ver}`, {method: 'POST'}); loadPlaybook();
+});
+$('pbSave').addEventListener('click', async () => {
+  try {
+    const d = await api('/api/admin/playbook', {method: 'PUT', body: JSON.stringify({text: $('pb').value, reason: $('pbReason').value || 'manual edit'})});
+    $('pbMsg').style.color = 'var(--ok)'; $('pbMsg').textContent = `Saved as version ${d.version}.`; $('pbReason').value = ''; loadPlaybook();
+  } catch (err) { $('pbMsg').style.color = ''; $('pbMsg').textContent = err.message; }
+});
+async function loadUsage() {
+  const d = await api('/api/admin/usage');
+  $('total').textContent = `Estimated Claude API spend across all models: $${d.total_cost_usd.toFixed(2)}`;
+  $('usage').innerHTML = '<tr><th>Ticker</th><th>Analyst</th><th>Started</th><th>Model versions</th><th>Est. cost</th></tr>' + d.sessions
+    .sort((a, b) => (b.created || '').localeCompare(a.created || ''))
+    .map((s) => `<tr><td><a href="/#${esc(s.id)}">${esc(s.ticker)}</a></td><td>${esc(s.owner)}</td><td>${esc((s.created || '').slice(0, 10))}</td><td>${esc(s.model_version ?? 0)}</td><td>$${(s.cost_usd || 0).toFixed(2)}</td></tr>`).join('');
+}
+api('/api/me').then((me) => {
+  if (!me.admin) { document.querySelector('.admin').innerHTML = '<section><p>Sign in with the admin password to use this page.</p></section>'; return; }
+  loadFeedback(); loadPlaybook(); loadUsage();
+});
+</script>
+</body>
+</html>

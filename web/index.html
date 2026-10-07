@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Starter</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <h1>Model Starter</h1>
+  <span id="who"></span>
+  <a id="adminLink" href="/admin.html" hidden><button>Admin</button></a>
+  <button id="fbBtn">Suggest an improvement</button>
+  <button id="logout">Sign out</button>
+</header>
+<div class="layout">
+  <aside class="side">
+    <h2>New model</h2>
+    <form id="newForm">
+      <input id="ticker" placeholder="Ticker, e.g. CHRW" maxlength="12" required>
+      <button class="primary">Start</button>
+    </form>
+    <h2>Models</h2>
+    <div id="sessions"></div>
+  </aside>
+  <main class="chat">
+    <div class="log" id="log"><div class="empty">Enter a ticker to start.<br>Claude gathers the filings, proposes drivers and competitors,<br>then builds a downloadable Excel model you can refine in chat.</div></div>
+    <div class="working" id="working"></div>
+    <form class="bar" id="bar">
+      <textarea id="text" placeholder="Message Claude (Enter to send, Shift+Enter for a new line)" rows="1" disabled></textarea>
+      <button class="primary" id="sendBtn" disabled>Send</button>
+    </form>
+  </main>
+  <aside class="files">
+    <h2>Models</h2><div id="models"><small style="color:var(--muted)">None yet</small></div>
+    <h2>Filings and documents</h2><div id="docs"><small style="color:var(--muted)">None yet</small></div>
+    <p id="zipWrap" hidden><a id="zip" href="#">Download all documents (.zip)</a></p>
+  </aside>
+</div>
+<div class="modal" id="fbModal">
+  <div class="card">
+    <h3>Suggest an improvement</h3>
+    <p>Tell us what would make the models or this site better. Claude drafts the change and an admin approves it before it goes live.</p>
+    <textarea id="fbText" rows="5" placeholder="e.g. Always show capex as a % of revenue and split maintenance vs growth capex when the company discloses it."></textarea>
+    <div class="row"><button id="fbCancel">Cancel</button><button class="primary" id="fbSend">Send</button></div>
+    <div class="err" id="fbMsg"></div>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

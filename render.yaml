@@ -1,0 +1,27 @@
+# Render blueprint for the backend (API, Claude agent, Excel builder).
+# The web pages are served by Netlify, which forwards /api/* here (see netlify.toml).
+services:
+  - type: web
+    name: model-starter-api
+    runtime: docker
+    plan: starter            # a persistent disk needs a paid plan; free instances lose files on restart
+    healthCheckPath: /api/health
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # paste it in the Render dashboard, never in the repo
+      - key: TEAM_PASSWORD
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SEC_USER_AGENT
+        sync: false          # e.g. "Your Firm research@yourfirm.com" (SEC requires a contact)
+      - key: GITHUB_REPO
+        value: PGiam/Model-Starter
+      - key: GITHUB_TOKEN
+        sync: false          # fine-grained token with Issues: read/write on this repo only
