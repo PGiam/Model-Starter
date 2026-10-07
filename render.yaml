@@ -4,12 +4,8 @@ services:
   - type: web
     name: model-starter-api
     runtime: docker
-    plan: starter            # a persistent disk needs a paid plan; free instances lose files on restart
+    plan: free               # the free disk is wiped when the server sleeps; data is kept in a private GitHub repo instead (app/persist.py)
     healthCheckPath: /api/health
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 5
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false          # paste it in the Render dashboard, never in the repo
@@ -23,5 +19,7 @@ services:
         sync: false          # e.g. "Your Firm research@yourfirm.com" (SEC requires a contact)
       - key: GITHUB_REPO
         value: PGiam/Model-Starter
+      - key: DATA_REPO
+        sync: false          # a PRIVATE repo for saved chats, models and the playbook, e.g. PGiam/model-starter-data
       - key: GITHUB_TOKEN
-        sync: false          # fine-grained token with Issues: read/write on this repo only
+        sync: false          # fine-grained token: Contents read/write on DATA_REPO, Issues read/write on GITHUB_REPO
