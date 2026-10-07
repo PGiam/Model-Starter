@@ -1,6 +1,7 @@
 """Web API and page server."""
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import hmac
 import io
@@ -15,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import feedback, store
+from . import feedback, persist, store
 from .agent import Session
 
 TEAM_PASSWORD = os.environ.get("TEAM_PASSWORD", "")
@@ -23,7 +24,13 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 SECRET = os.environ.get("SESSION_SECRET") or uuid.uuid4().hex
 WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
 
-app = FastAPI(title="Model Starter")
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    persist.restore()  # bring back data saved to GitHub before the server last restarted
+    yield
+
+
+app = FastAPI(title="Model Starter", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=SECRET, session_cookie="ms_session", max_age=14 * 24 * 3600,
                    same_site="lax", https_only=os.environ.get("COOKIE_SECURE", "1") == "1")
 
@@ -266,7 +273,7 @@ def usage(req: Request):
     rows = []
     for m in store.list_sessions():
         rows.append({k: m.get(k) for k in ("id", "ticker", "owner", "created", "cost_usd", "model_version")})
-    return {"sessions": rows, "total_cost_usd": round(sum((r.get("cost_usd") or 0) for r in rows), 2)}
+    return {"sessions": rows, "total_cost_usd": round(sum((r.get("cost_usd") or 0) for r in rows), 2), "storage": persist.status}
 
 
 # ---------------------------------------------------------------- pages

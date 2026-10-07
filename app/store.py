@@ -1,4 +1,4 @@
-"""File-based storage under DATA_DIR (a persistent disk in production)."""
+"""File-based storage under DATA_DIR. On hosts without a persistent disk, persist.py mirrors it to GitHub."""
 from __future__ import annotations
 
 import datetime as dt
@@ -102,6 +102,8 @@ def write_playbook(text: str, author: str, reason: str) -> int:
             f.write(text)
         hist.append({"version": ver, "at": dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat(), "author": author, "reason": reason, "file": f"v{ver}.md"})
         write_json(_p("playbook", "history.json"), hist)
+        from . import persist
+        persist.save("playbook/current.md", "playbook/history.json", "playbook/v0.md", f"playbook/v{ver}.md")
         return ver
 
 
@@ -125,3 +127,5 @@ def list_feedback():
 
 def save_feedback(items):
     write_json(feedback_path(), items)
+    from . import persist
+    persist.save(feedback_path())

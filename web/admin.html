@@ -94,7 +94,10 @@ $('pbSave').addEventListener('click', async () => {
 });
 async function loadUsage() {
   const d = await api('/api/admin/usage');
-  $('total').textContent = `Estimated Claude API spend across all models: $${d.total_cost_usd.toFixed(2)}`;
+  const st = d.storage || {};
+  const save = !st.enabled ? (st.error || 'Not saving to GitHub (DATA_REPO not set): data is lost when the server restarts.')
+    : st.error ? `Saving to GitHub has a problem: ${st.error}` : 'Chats, models and the playbook are saved to your private data repo.';
+  $('total').textContent = `Estimated Claude API spend across all models: $${d.total_cost_usd.toFixed(2)}. ${save}`;
   $('usage').innerHTML = '<tr><th>Ticker</th><th>Analyst</th><th>Started</th><th>Model versions</th><th>Est. cost</th></tr>' + d.sessions
     .sort((a, b) => (b.created || '').localeCompare(a.created || ''))
     .map((s) => `<tr><td><a href="/#${esc(s.id)}">${esc(s.ticker)}</a></td><td>${esc(s.owner)}</td><td>${esc((s.created || '').slice(0, 10))}</td><td>${esc(s.model_version ?? 0)}</td><td>$${(s.cost_usd || 0).toFixed(2)}</td></tr>`).join('');

@@ -18,7 +18,7 @@ import uuid
 
 import anthropic
 
-from . import sec, store
+from . import persist, sec, store
 from .builder.model_builder import build_workbook
 
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5")
@@ -305,6 +305,7 @@ class Session:
         self.meta["latest_model"] = fname
         self.save()
         self.event("file", name=fname, kind="model", note=note)
+        persist.save_session(self.id)
         return {"built": True, "file": fname, **rep}
 
     # --------------------------------------------------- agent loop
@@ -388,6 +389,7 @@ class Session:
             self.running = False
             self.save()
             self.event("done")
+            persist.save_session(self.id)
 
     def _usage(self, u):
         m = self.meta.setdefault("usage", {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0})
