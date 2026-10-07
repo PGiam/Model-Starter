@@ -36,10 +36,14 @@ Claude drafts each change and an admin approves it before it goes live.
 | `app/builder/` | The Excel model builder and the spec it reads (`SPEC.md`) |
 | `app/playbook_default.md` | The starting playbook (the live copy is edited on the admin page) |
 | `app/feedback.py` | Turns team suggestions into proposals; applies approved ones |
+| `app/store.py`, `app/persist.py` | File storage, mirrored to a private GitHub repo on hosts without a disk |
+| `CLAUDE.md` | Orientation for Claude Code: layout, commands, the owner's rules, what is and isn't tested |
 | `web/` | The pages Netlify serves |
 | `examples/chrw_spec.json` | A complete C.H. Robinson spec used by the tests |
 
-## Deploying (Netlify for the site, Render for the backend)
+## Deploying (Netlify for the site, Render's free plan for the backend)
+
+You can skip this until you want the team to use the site. Start with "Running locally" below.
 
 The backend runs long Claude conversations and LibreOffice, which Netlify Functions can't host
 (they time out after seconds). So Netlify serves the pages and forwards `/api/*` to a small Render service.
@@ -115,17 +119,42 @@ under **Limits**.
 
 ## Running locally
 
-```bash
-python -m venv .venv && . .venv/bin/activate
+### Get the code onto your PC
+
+In PowerShell (needs [Git](https://git-scm.com/download/win) and [Python 3.12+](https://www.python.org/downloads/)):
+
+```powershell
+cd "G:\My Drive\Coding"
+git clone https://github.com/PGiam/Model-Starter.git
+cd Model-Starter
+```
+
+Then open that folder in Claude Code. `CLAUDE.md` gives it the full picture.
+
+Google Drive syncs every file in the folder, and a Python virtual environment holds thousands of them.
+So keep the virtual environment outside Drive, as below. Commit and push often: GitHub is the real copy
+of the code, and Drive is only a backup.
+
+### Run it
+
+```powershell
+py -m venv $HOME\.venvs\model-starter
+& $HOME\.venvs\model-starter\Scripts\Activate.ps1
 pip install -r requirements.txt pytest httpx
 pytest -q
-export ANTHROPIC_API_KEY=...  TEAM_PASSWORD=team  ADMIN_PASSWORD=admin  COOKIE_SECURE=0  DATA_DIR=./data \
-       SEC_USER_AGENT="Your Name you@example.com"
+
+$env:ANTHROPIC_API_KEY = "..."      # your key; never commit it
+$env:TEAM_PASSWORD = "team"; $env:ADMIN_PASSWORD = "admin"; $env:COOKIE_SECURE = "0"
+$env:DATA_DIR = "$HOME\model-starter-data"
+$env:SEC_USER_AGENT = "Your Name you@example.com"
+$env:SOFFICE = "C:\Program Files\LibreOffice\program\soffice.exe"   # optional, see below
 uvicorn app.main:app --reload
 ```
 
-Then open <http://localhost:8000>. Install LibreOffice so models are recalculated before download;
-without it the workbook still works and Excel calculates it on open.
+On macOS or Linux, use `python -m venv`, `source .../bin/activate` and `export NAME=value` instead.
+
+Open <http://localhost:8000>. Install [LibreOffice](https://www.libreoffice.org/download/) so models are recalculated
+and checked before download. Without it the workbook still works, and Excel calculates it on open.
 
 ## Security notes
 
