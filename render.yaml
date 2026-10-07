@@ -4,12 +4,8 @@ services:
   - type: web
     name: model-starter-api
     runtime: docker
-    plan: starter            # a persistent disk needs a paid plan; free instances lose files on restart
+    plan: free                # no persistent disk on the free plan: sessions/models/filings are lost on every restart or redeploy, and the instance sleeps after ~15 min idle
     healthCheckPath: /api/health
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 5
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false          # paste it in the Render dashboard, never in the repo
